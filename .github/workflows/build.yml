@@ -1,14 +1,11 @@
 name: build
 
 on:
-  push:
-    branches: ["*"]
-    pull_request:
   workflow_dispatch:
 
 jobs:
   build:
-    runs-on: windows-2019
+    runs-on: windows-latest
     steps:
       - uses: actions/checkout@v3
         with:
@@ -27,6 +24,9 @@ jobs:
       - name: Build
         shell: msys2 {0}
         run: |
+          export CFLAGS="-march=tigerlake -mprefer-vector-width=512 -O3 -flto=full -mguard=cf -fcf-protection=full -D_WIN32_WINNT=0x0A00 -DWINVER=0x0A00 -fvisibility=hidden -fvirtual-function-elimination -fwhole-program-vtables -fdata-sections -ffunction-sections -fno-unwind-tables -fno-asynchronous-unwind-tables -fomit-frame-pointer -fno-emulated-tls -pthread"
+          export CXXFLAGS="$CFLAGS"
+          export LDFLAGS="$CFLAGS -fuse-ld=lld -Wl,-s,-O3,--gc-sections,--icf=all,--no-insert-timestamp,--major-os-version=10,--major-subsystem-version=6,--minor-subsystem-version=2,--file-alignment=4096 -Xlinker -Xlink=-cetcompat -Xlinker -Xlink=-guard:cf,longjmp,ehcont -Xlinker -Xlink=-opt:lldlto=3 -Xlinker -Xlink=-opt:lldltocgo=3"
           mkdir build && cd build
           cmake -DCMAKE_BUILD_TYPE=RELEASE \
             -DCMAKE_SHARED_LINKER_FLAGS="-static" \
@@ -38,7 +38,7 @@ jobs:
           path: build/menu.dll
   publish:
     needs: build
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     if: ${{ github.ref == 'refs/heads/main' }}
     steps:
       - uses: actions/checkout@v3
